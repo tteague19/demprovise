@@ -65,7 +65,7 @@ src/rcv_dashboard/
 - **Testing**: 100% test coverage with pytest; use Hypothesis for property-based testing; functional test style (no classes)
 - **Linting**: Code must pass `ruff` linting and `mypy --strict` type checking
 - **Formatting**: All code formatted with `ruff format`
-- **Commits**: Use Conventional Commits format with max 50 chars in title and max 72 chars per body line
+- **Commits**: Use Conventional Commits format with max 50 chars in title and max 72 chars per body line; commit frequently for every meaningful change
 
 ### Implementation Priority
 1. **Phase 1**: Core RCV processing and basic Streamlit interface
