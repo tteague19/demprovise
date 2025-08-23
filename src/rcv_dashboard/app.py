@@ -16,6 +16,19 @@ from pydantic import ValidationError
 from .core.ballot_loader import load_ballots_from_uploaded_file
 from .core.models import AppSettings, ElectionResult
 from .core.rcv_processor import RCVProcessor
+from .visualization.charts import (
+    create_vote_progression_chart,
+    create_vote_transfer_sankey,
+    create_round_pie_chart,
+    create_stacked_rounds_chart,
+    create_elimination_timeline,
+)
+from .visualization.tables import (
+    create_round_results_table,
+    create_transfer_summary_table,
+    create_candidate_summary_table,
+    create_round_comparison_table,
+)
 
 
 def main() -> None:
@@ -214,7 +227,7 @@ def run_rcv_election(ballot_data: Any) -> None:
 
 
 def display_election_results(election_result: ElectionResult) -> None:
-    """Display comprehensive election results.
+    """Display comprehensive election results with visualizations.
     
     Args:
         election_result: Complete election results from RCV processing
@@ -239,36 +252,231 @@ def display_election_results(election_result: ElectionResult) -> None:
     with col4:
         st.metric("Majority Threshold", election_result.majority_threshold)
     
-    # Round-by-round results
-    st.subheader("📊 Round-by-Round Results")
+    # Create tabs for different views
+    tab_overview, tab_visualizations, tab_tables, tab_rounds = st.tabs([
+        "📊 Overview", 
+        "📈 Visualizations", 
+        "📋 Tables", 
+        "🔄 Round Details"
+    ])
     
-    tabs = st.tabs([f"Round {i+1}" for i in range(len(election_result.rounds))])
+    with tab_overview:
+        display_election_overview(election_result)
     
-    for i, (tab, round_result) in enumerate(zip(tabs, election_result.rounds)):
-        with tab:
-            display_round_results(round_result, i == len(election_result.rounds) - 1)
+    with tab_visualizations:
+        display_election_visualizations(election_result)
     
-    # Final candidate standings
-    st.subheader("🥇 Final Candidate Rankings")
+    with tab_tables:
+        display_election_tables(election_result)
     
-    candidate_data = []
-    for candidate in election_result.candidates:
-        candidate_data.append({
-            "Candidate": candidate.name,
-            "Status": candidate.status.title(),
-            "Final Votes": candidate.vote_count,
-            "Eliminated in Round": candidate.elimination_round or "N/A"
-        })
-    
-    # Sort by final votes (descending)
-    candidate_data.sort(key=lambda x: x["Final Votes"], reverse=True)
-    st.dataframe(candidate_data, use_container_width=True, hide_index=True)
+    with tab_rounds:
+        display_round_by_round_results(election_result)
     
     # Option to process another election
+    st.divider()
     if st.button("🔄 Process Another Election", use_container_width=True):
         st.session_state.election_result = None
         st.session_state.ballot_data = None
         st.rerun()
+
+
+def display_election_overview(election_result: ElectionResult) -> None:
+    """Display high-level overview of election results.
+    
+    Args:
+        election_result: Complete election results
+    """
+    # Candidate summary table
+    st.subheader("🥇 Final Candidate Rankings")
+    candidate_summary_df = create_candidate_summary_table(election_result)
+    st.dataframe(candidate_summary_df, use_container_width=True, hide_index=True)
+    
+    # Key insights
+    st.subheader("🔍 Key Insights")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Election type analysis
+        if len(election_result.rounds) == 1:
+            st.info("💡 **Majority Winner:** The winner achieved a majority in the first round.")
+        else:
+            st.info(f"💡 **Multi-Round Election:** Required {len(election_result.rounds)} rounds to determine the winner.")
+        
+        # Voter participation
+        exhausted_final = election_result.rounds[-1].exhausted_ballots if election_result.rounds else 0
+        exhausted_pct = (exhausted_final / election_result.total_ballots * 100) if election_result.total_ballots > 0 else 0
+        
+        if exhausted_pct > 10:
+            st.warning(f"⚠️ **High ballot exhaustion:** {exhausted_pct:.1f}% of ballots were exhausted.")
+        else:
+            st.success(f"✅ **Low ballot exhaustion:** Only {exhausted_pct:.1f}% of ballots were exhausted.")
+    
+    with col2:
+        # Vote transfers
+        total_transfers = sum(
+            len(round_result.vote_transfers) 
+            for round_result in election_result.rounds 
+            if round_result.vote_transfers
+        )
+        
+        if total_transfers > 0:
+            st.info(f"🔄 **Vote transfers occurred:** {total_transfers} transfer events across all rounds.")
+        
+        # Competitiveness
+        winner_margin = election_result.winner_vote_percentage
+        if winner_margin >= 60:
+            st.info("📊 **Decisive victory:** Winner had strong support.")
+        elif winner_margin >= 55:
+            st.info("📊 **Comfortable victory:** Winner had solid support.")
+        else:
+            st.info("📊 **Close election:** Winner had narrow majority.")
+
+
+def display_election_visualizations(election_result: ElectionResult) -> None:
+    """Display interactive visualizations of election results.
+    
+    Args:
+        election_result: Complete election results
+    """
+    # Chart selection
+    chart_type = st.selectbox(
+        "Select Visualization",
+        [
+            "Vote Progression (Bar Chart)",
+            "Vote Transfers (Sankey Diagram)", 
+            "Round Pie Charts",
+            "Stacked Rounds Chart",
+            "Elimination Timeline"
+        ]
+    )
+    
+    try:
+        if chart_type == "Vote Progression (Bar Chart)":
+            st.subheader("📊 Vote Progression Across Rounds")
+            st.markdown("Track how vote counts changed for each candidate across elimination rounds.")
+            fig = create_vote_progression_chart(election_result)
+            st.plotly_chart(fig, use_container_width=True)
+            
+        elif chart_type == "Vote Transfers (Sankey Diagram)":
+            st.subheader("🌊 Vote Transfer Flow")
+            st.markdown("Visualize how votes flowed from eliminated candidates to remaining candidates.")
+            fig = create_vote_transfer_sankey(election_result)
+            st.plotly_chart(fig, use_container_width=True)
+            
+        elif chart_type == "Round Pie Charts":
+            st.subheader("🥧 Vote Distribution by Round")
+            st.markdown("See the vote share for each candidate in each round.")
+            
+            # Allow user to select which rounds to show
+            round_options = [f"Round {i+1}" for i in range(len(election_result.rounds))]
+            selected_rounds = st.multiselect(
+                "Select rounds to display:", 
+                round_options,
+                default=round_options[:min(3, len(round_options))]  # Default to first 3 rounds
+            )
+            
+            if selected_rounds:
+                cols = st.columns(min(len(selected_rounds), 3))  # Max 3 columns
+                
+                for i, round_name in enumerate(selected_rounds):
+                    round_idx = int(round_name.split()[1]) - 1
+                    round_result = election_result.rounds[round_idx]
+                    
+                    with cols[i % 3]:
+                        fig = create_round_pie_chart(round_result)
+                        st.plotly_chart(fig, use_container_width=True)
+            
+        elif chart_type == "Stacked Rounds Chart":
+            st.subheader("📚 Stacked Vote Counts")
+            st.markdown("Compare vote counts across all rounds in a single stacked visualization.")
+            fig = create_stacked_rounds_chart(election_result)
+            st.plotly_chart(fig, use_container_width=True)
+            
+        elif chart_type == "Elimination Timeline":
+            st.subheader("⏰ Elimination Order Timeline")
+            st.markdown("Timeline showing when each candidate was eliminated.")
+            fig = create_elimination_timeline(election_result)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    except Exception as e:
+        st.error(f"Error creating visualization: {str(e)}")
+        if st.checkbox("Show detailed error", key=f"viz_error_{chart_type}"):
+            st.code(traceback.format_exc())
+
+
+def display_election_tables(election_result: ElectionResult) -> None:
+    """Display comprehensive data tables for election results.
+    
+    Args:
+        election_result: Complete election results
+    """
+    table_type = st.selectbox(
+        "Select Table View",
+        [
+            "Round-by-Round Results",
+            "Vote Transfer Summary", 
+            "Candidate Performance",
+            "Round Comparison"
+        ]
+    )
+    
+    try:
+        if table_type == "Round-by-Round Results":
+            st.subheader("📊 Complete Round Results")
+            st.markdown("Detailed breakdown of vote counts and eliminations for every round.")
+            df = create_round_results_table(election_result)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+        elif table_type == "Vote Transfer Summary":
+            st.subheader("🔄 Vote Transfer Details")  
+            st.markdown("Summary of how votes were transferred between candidates.")
+            df = create_transfer_summary_table(election_result)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+        elif table_type == "Candidate Performance":
+            st.subheader("🏆 Candidate Performance Analysis")
+            st.markdown("Comprehensive statistics for each candidate's performance.")
+            df = create_candidate_summary_table(election_result)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+        elif table_type == "Round Comparison":
+            st.subheader("⚖️ Round Comparison")
+            st.markdown("Side-by-side comparison of selected rounds.")
+            
+            # Allow user to select rounds for comparison
+            max_rounds = len(election_result.rounds)
+            round_numbers = st.multiselect(
+                "Select rounds to compare:",
+                list(range(1, max_rounds + 1)),
+                default=[1, max_rounds] if max_rounds > 1 else [1]
+            )
+            
+            if len(round_numbers) >= 1:
+                df = create_round_comparison_table(election_result, round_numbers)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+            else:
+                st.info("Please select at least one round to compare.")
+    
+    except Exception as e:
+        st.error(f"Error creating table: {str(e)}")
+        if st.checkbox("Show detailed error", key=f"table_error_{table_type}"):
+            st.code(traceback.format_exc())
+
+
+def display_round_by_round_results(election_result: ElectionResult) -> None:
+    """Display detailed round-by-round breakdown.
+    
+    Args:
+        election_result: Complete election results
+    """
+    st.subheader("🔄 Round-by-Round Details")
+    
+    round_tabs = st.tabs([f"Round {i+1}" for i in range(len(election_result.rounds))])
+    
+    for i, (tab, round_result) in enumerate(zip(round_tabs, election_result.rounds)):
+        with tab:
+            display_round_results(round_result, i == len(election_result.rounds) - 1)
 
 
 def display_round_results(round_result: Any, is_final: bool = False) -> None:
