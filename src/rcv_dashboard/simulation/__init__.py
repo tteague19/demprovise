@@ -1,5 +1,9 @@
-"""Election simulation and demo scenario generation.
+"""Simulation and demonstration modules for RCV Dashboard.
 
-This module provides tools for generating synthetic elections, pre-built scenarios,
-and educational demonstrations of RCV principles.
+This package provides tools for creating synthetic elections, demo scenarios,
+and educational examples to help users understand ranked choice voting concepts.
 """
+
+from __future__ import annotations
+
+__all__ = ["scenarios"]

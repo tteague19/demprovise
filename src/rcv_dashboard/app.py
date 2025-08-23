@@ -29,6 +29,7 @@ from .visualization.tables import (
     create_candidate_summary_table,
     create_round_comparison_table,
 )
+from .simulation.scenarios import get_scenario_list, load_scenario
 
 
 def main() -> None:
@@ -70,6 +71,37 @@ def main() -> None:
         
         if uploaded_file:
             process_uploaded_file(uploaded_file, settings)
+        
+        st.divider()
+        
+        # Demo scenarios section
+        st.header("📚 Demo Scenarios")
+        
+        scenarios = get_scenario_list()
+        scenario_names = [scenario.name for scenario in scenarios]
+        
+        selected_scenario = st.selectbox(
+            "Choose a demo election:",
+            [""] + scenario_names,
+            help="Load pre-built scenarios that illustrate key RCV concepts"
+        )
+        
+        if selected_scenario:
+            # Find the selected scenario info
+            scenario_info = next(s for s in scenarios if s.name == selected_scenario)
+            
+            # Show scenario preview
+            with st.expander("📖 Scenario Details"):
+                st.write(f"**Educational Focus:** {scenario_info.educational_point}")
+                st.write(f"**Description:** {scenario_info.description}")
+                st.write(f"**Candidates:** {scenario_info.candidate_count}")
+                st.write(f"**Ballots:** {scenario_info.ballot_count}")
+                st.write(f"**Expected Rounds:** {scenario_info.expected_rounds}")
+            
+            if st.button("🎭 Load Demo Scenario", use_container_width=True):
+                load_demo_scenario(selected_scenario)
+        
+        st.divider()
         
         # Settings section
         st.header("Settings")
@@ -131,6 +163,12 @@ def process_uploaded_file(uploaded_file: Any, settings: AppSettings) -> None:
         st.session_state.ballot_data = ballot_data
         st.session_state.election_result = None
         
+        # Clear any previous scenario context
+        if hasattr(st.session_state, 'scenario_description'):
+            del st.session_state.scenario_description
+        if hasattr(st.session_state, 'scenario_analysis'):
+            del st.session_state.scenario_analysis
+        
         st.success(f"✅ Loaded {ballot_data.total_ballots} ballots with {len(ballot_data.candidates)} candidates")
         
         if ballot_data.invalid_ballots > 0:
@@ -154,6 +192,16 @@ def display_ballot_preview(ballot_data: Any) -> None:
         ballot_data: Loaded and validated ballot data
     """
     st.header("📊 Ballot Data Preview")
+    
+    # Show scenario context if this is a demo scenario
+    if hasattr(st.session_state, 'scenario_description') and st.session_state.scenario_description:
+        st.info("🎭 **Demo Scenario Loaded** - This is an educational example with pre-designed voting patterns.")
+        
+        with st.expander("📖 Scenario Context", expanded=False):
+            st.markdown(st.session_state.scenario_description)
+            if hasattr(st.session_state, 'scenario_analysis'):
+                st.markdown("---")
+                st.markdown(st.session_state.scenario_analysis)
     
     # Summary statistics
     col1, col2, col3 = st.columns(3)
@@ -278,6 +326,37 @@ def display_election_results(election_result: ElectionResult) -> None:
         st.session_state.election_result = None
         st.session_state.ballot_data = None
         st.rerun()
+
+
+def load_demo_scenario(scenario_name: str) -> None:
+    """Load a demo scenario and update session state.
+    
+    Args:
+        scenario_name: Name of the scenario to load
+    """
+    try:
+        with st.spinner(f"Loading {scenario_name} scenario..."):
+            ballot_data, description, analysis = load_scenario(scenario_name)
+        
+        # Store in session state
+        st.session_state.ballot_data = ballot_data
+        st.session_state.election_result = None
+        st.session_state.scenario_description = description
+        st.session_state.scenario_analysis = analysis
+        
+        st.success(f"🎭 Loaded demo scenario: **{scenario_name}**")
+        st.info(f"📊 {ballot_data.total_ballots} ballots with {len(ballot_data.candidates)} candidates")
+        
+        # Provide additional context
+        with st.expander("🎓 About This Scenario", expanded=True):
+            st.markdown(description)
+            st.markdown("---")
+            st.markdown(analysis)
+    
+    except Exception as e:
+        st.error(f"Error loading scenario: {str(e)}")
+        if st.checkbox("Show detailed error", key="scenario_error"):
+            st.code(traceback.format_exc())
 
 
 def display_election_overview(election_result: ElectionResult) -> None:
