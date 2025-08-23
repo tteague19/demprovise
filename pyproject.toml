@@ -1,0 +1,8 @@
+[project]
+name = "demprovise"
+authors = [{ name = "Thomas Teague", email = "thomas.d.teague1@gmail.com" }]
+version = "0.1.0"
+description = "A capability and dashboard to facilitate voting in a competitive improv comedy event."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
