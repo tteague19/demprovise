@@ -99,8 +99,8 @@ class ElectionResult(BaseModel):
     
     winner: str = Field(..., min_length=1)
     total_ballots: int = Field(..., gt=0)
-    rounds: list[RoundResult] = Field(..., min_items=1)
-    candidates: list[CandidateInfo] = Field(..., min_items=1)
+    rounds: list[RoundResult] = Field(..., min_length=1)
+    candidates: list[CandidateInfo] = Field(..., min_length=1)
     majority_threshold: int = Field(..., gt=0)
     winner_vote_percentage: float = Field(..., ge=0.0, le=100.0)
     
@@ -121,8 +121,8 @@ class BallotData(BaseModel):
         invalid_ballots: Number of invalid/malformed ballots found
     """
     
-    ballots: list[list[str]] = Field(..., min_items=1)
-    candidates: set[str] = Field(..., min_items=1)
+    ballots: list[list[str]] = Field(..., min_length=1)
+    candidates: set[str] = Field(..., min_length=1)
     total_ballots: int = Field(..., gt=0)
     invalid_ballots: int = Field(default=0, ge=0)
     

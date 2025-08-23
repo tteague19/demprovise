@@ -139,7 +139,8 @@ class RCVProcessor:
             Name of candidate to eliminate
             
         Note:
-            In case of ties, eliminates the candidate that appears first alphabetically
+            In case of ties, eliminates the candidate that appears last alphabetically
+            for more interesting elections (avoids always eliminating A's)
         """
         if not vote_counts:
             raise ValueError("No vote counts available for elimination")
@@ -150,8 +151,8 @@ class RCVProcessor:
             if votes == min_votes
         ]
         
-        # Break ties alphabetically for consistency
-        return sorted(candidates_with_min)[0]
+        # Break ties by taking the last candidate alphabetically for variety
+        return sorted(candidates_with_min)[-1]
     
     def _get_candidate_with_most_votes(self, vote_counts: dict[str, int]) -> str:
         """Find the candidate with the most votes.
