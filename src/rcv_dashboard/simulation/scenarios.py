@@ -8,7 +8,7 @@ and multi-round eliminations.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Sequence
 
 from ..core.models import BallotData
 
@@ -146,6 +146,30 @@ def load_scenario(scenario_name: str) -> tuple[BallotData, str, str]:
     
     return scenario_functions[scenario_name]()
 
+
+# Pre-computed scenarios for faster testing and consistent results
+DEMO_SCENARIOS: dict[str, dict[str, Any]] = {}
+
+def _initialize_demo_scenarios() -> None:
+    """Initialize the DEMO_SCENARIOS dictionary with all available scenarios."""
+    scenario_functions = {
+        "Classic Spoiler Effect": _create_spoiler_effect_scenario,
+        "Polarized vs Consensus": _create_polarized_vs_consensus_scenario, 
+        "Close Three-Way Race": _create_close_three_way_scenario,
+        "Landslide Victory": _create_landslide_victory_scenario,
+        "Comedy Competition": _create_comedy_competition_scenario,
+        "Student Government": _create_student_government_scenario,
+        "City Council Race": _create_city_council_scenario,
+    }
+    
+    global DEMO_SCENARIOS
+    for name, func in scenario_functions.items():
+        ballot_data, description, analysis = func()
+        DEMO_SCENARIOS[name] = {
+            "ballots": ballot_data.ballots,
+            "description": description,
+            "analysis": analysis,
+        }
 
 def _create_spoiler_effect_scenario() -> tuple[BallotData, str, str]:
     """Create the classic spoiler effect demonstration."""
@@ -562,3 +586,7 @@ def _create_city_council_scenario() -> tuple[BallotData, str, str]:
     """
     
     return ballot_data, description, analysis
+
+
+# Initialize scenarios on module import
+_initialize_demo_scenarios()

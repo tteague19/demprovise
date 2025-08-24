@@ -138,3 +138,9 @@ exclude_lines = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rcv_dashboard"]
+
+[tool.uv]
+dev-dependencies = [
+    "hypothesis>=6.138.2",
+    "pytest-cov>=6.2.1",
+]

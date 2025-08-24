@@ -482,3 +482,192 @@ def _create_summary_report(election_result: ElectionResult) -> str:
     ])
     
     return "\n".join(lines)
+
+
+def validate_uploaded_file(uploaded_file: Any, max_size_mb: float = 50.0) -> dict[str, Any]:
+    """Validate an uploaded file for safety and constraints.
+    
+    Checks file size, type, and basic safety requirements for uploaded ballot files.
+    
+    Args:
+        uploaded_file: Streamlit uploaded file object
+        max_size_mb: Maximum allowed file size in megabytes
+        
+    Returns:
+        Dictionary with validation results:
+        - is_valid: bool indicating if file passes validation
+        - error_message: str error description if validation fails
+        - file_info: dict with file metadata
+        
+    Examples:
+        >>> # Mock file for testing
+        >>> import io
+        >>> class MockFile:
+        ...     def __init__(self, name, content, type_):
+        ...         self.name = name
+        ...         self._content = content
+        ...         self.type = type_
+        ...     def getvalue(self):
+        ...         return self._content.encode() if isinstance(self._content, str) else self._content
+        >>> 
+        >>> mock_file = MockFile("test.csv", "header,data\\n", "text/csv")
+        >>> result = validate_uploaded_file(mock_file, max_size_mb=10)
+        >>> result["is_valid"]
+        True
+        >>> "file_info" in result
+        True
+    """
+    try:
+        if not uploaded_file:
+            return {
+                "is_valid": False,
+                "error_message": "No file uploaded",
+                "file_info": {}
+            }
+        
+        # Get file information
+        file_name = getattr(uploaded_file, "name", "unknown")
+        file_type = getattr(uploaded_file, "type", "unknown")
+        
+        # Get file size
+        try:
+            file_content = uploaded_file.getvalue()
+            file_size_bytes = len(file_content)
+            file_size_mb = file_size_bytes / (1024 * 1024)
+        except Exception:
+            return {
+                "is_valid": False, 
+                "error_message": "Could not read file content",
+                "file_info": {"name": file_name, "type": file_type}
+            }
+        
+        # Check file size
+        if file_size_mb > max_size_mb:
+            return {
+                "is_valid": False,
+                "error_message": f"File too large: {file_size_mb:.1f}MB (max: {max_size_mb}MB)",
+                "file_info": {
+                    "name": file_name,
+                    "type": file_type, 
+                    "size_mb": file_size_mb
+                }
+            }
+        
+        # Check file type
+        allowed_types = {
+            "text/csv", "application/csv",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+        
+        file_extension = file_name.lower().split('.')[-1] if '.' in file_name else ""
+        allowed_extensions = {"csv", "xls", "xlsx"}
+        
+        if file_type not in allowed_types and file_extension not in allowed_extensions:
+            return {
+                "is_valid": False,
+                "error_message": f"Unsupported file type: {file_type}. Allowed: CSV, Excel",
+                "file_info": {
+                    "name": file_name,
+                    "type": file_type,
+                    "size_mb": file_size_mb
+                }
+            }
+        
+        # Validation passed
+        return {
+            "is_valid": True,
+            "error_message": "",
+            "file_info": {
+                "name": file_name,
+                "type": file_type,
+                "size_mb": file_size_mb,
+                "size_bytes": file_size_bytes
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "is_valid": False,
+            "error_message": f"Validation error: {str(e)}",
+            "file_info": {}
+        }
+
+
+def extract_ballots_from_dataframe(df: Any) -> list[list[str]]:
+    """Extract ballot data from a pandas DataFrame.
+    
+    Converts DataFrame with choice columns into list of ballot preference lists,
+    handling various column naming conventions and data formats.
+    
+    Args:
+        df: pandas DataFrame with ballot data
+        
+    Returns:
+        List of ballots as candidate preference lists
+        
+    Examples:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        ...     'first_choice': ['Alice', 'Bob'], 
+        ...     'second_choice': ['Bob', 'Alice']
+        ... })
+        >>> ballots = extract_ballots_from_dataframe(df)
+        >>> len(ballots)
+        2
+        >>> ballots[0]
+        ['Alice', 'Bob']
+    """
+    if df is None or df.empty:
+        return []
+    
+    # Find choice columns (first_choice, second_choice, etc. or choice_1, choice_2, etc.)
+    choice_columns = []
+    
+    # Look for various column naming patterns
+    for col in df.columns:
+        col_lower = col.lower().strip()
+        if any(pattern in col_lower for pattern in [
+            'choice', 'rank', 'preference', '1st', '2nd', '3rd'
+        ]):
+            choice_columns.append(col)
+    
+    if not choice_columns:
+        # If no clear choice columns, use all columns
+        choice_columns = list(df.columns)
+    
+    # Sort columns to ensure proper order (first, second, etc.)
+    def sort_key(col: str) -> tuple[int, str]:
+        col_lower = col.lower()
+        # Extract numeric indicators
+        for i, indicator in enumerate(['first', '1st', '1'], 1):
+            if indicator in col_lower:
+                return (i, col)
+        for i, indicator in enumerate(['second', '2nd', '2'], 2):
+            if indicator in col_lower:
+                return (i, col)
+        for i, indicator in enumerate(['third', '3rd', '3'], 3):
+            if indicator in col_lower:
+                return (i, col)
+        # Default ordering
+        return (999, col)
+    
+    choice_columns.sort(key=sort_key)
+    
+    ballots = []
+    for _, row in df.iterrows():
+        ballot = []
+        for col in choice_columns:
+            candidate = row[col]
+            # Skip empty/null candidates
+            if candidate and str(candidate).strip() and str(candidate).lower() not in ['nan', 'none', '']:
+                candidate_name = str(candidate).strip()
+                # Avoid duplicates in same ballot
+                if candidate_name not in ballot:
+                    ballot.append(candidate_name)
+        
+        # Only include non-empty ballots
+        if ballot:
+            ballots.append(ballot)
+    
+    return ballots

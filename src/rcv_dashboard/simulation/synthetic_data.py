@@ -536,3 +536,169 @@ def create_ballot_data_from_synthetic(
         total_ballots=len(valid_ballots),
         invalid_ballots=invalid_count
     )
+
+
+def create_voter_preferences(candidates: Sequence[str]) -> dict[str, float]:
+    """Create normalized preference weights for candidates.
+    
+    Generates random but normalized preference weights that sum to 1.0,
+    useful for modeling realistic voter preference distributions.
+    
+    Args:
+        candidates: List of candidate names
+        
+    Returns:
+        Dictionary mapping candidate names to preference weights (0-1, sum=1)
+        
+    Examples:
+        >>> import random
+        >>> random.seed(42)
+        >>> candidates = ["Alice", "Bob"]
+        >>> prefs = create_voter_preferences(candidates)
+        >>> len(prefs)
+        2
+        >>> abs(sum(prefs.values()) - 1.0) < 0.01
+        True
+        >>> all(0 <= weight <= 1 for weight in prefs.values())
+        True
+    """
+    if not candidates:
+        return {}
+    
+    if len(candidates) == 1:
+        return {candidates[0]: 1.0}
+    
+    # Generate random weights using Dirichlet-like distribution
+    import random
+    raw_weights = [random.random() for _ in candidates]
+    total_weight = sum(raw_weights)
+    
+    # Normalize to sum to 1.0
+    normalized_weights = [w / total_weight for w in raw_weights]
+    
+    return dict(zip(candidates, normalized_weights))
+
+
+def generate_polarized_election(candidates: Sequence[str], num_voters: int) -> list[list[str]]:
+    """Generate a polarized election with extreme preference patterns.
+    
+    Creates ballots where voters strongly prefer candidates on one side and
+    avoid moderate candidates, simulating political polarization.
+    
+    Args:
+        candidates: List of candidate names  
+        num_voters: Number of ballots to generate
+        
+    Returns:
+        List of ballots as candidate preference lists
+    """
+    if len(candidates) < 2:
+        raise ValueError("Need at least 2 candidates for polarized election")
+    
+    if num_voters <= 0:
+        return []
+    
+    ballots = []
+    candidates_list = list(candidates)
+    
+    # Create polarized preference weights
+    # First and last candidates are "extreme", middle ones are "moderate"
+    weights = {}
+    for i, candidate in enumerate(candidates_list):
+        if i == 0 or i == len(candidates_list) - 1:
+            weights[candidate] = 0.4  # Strong preference for extremes
+        else:
+            weights[candidate] = 0.2 / max(1, len(candidates_list) - 2)  # Weak for moderates
+    
+    return generate_synthetic_ballots(candidates_list, num_voters, preference_weights=weights)
+
+
+def generate_consensus_election(candidates: Sequence[str], num_voters: int) -> list[list[str]]:
+    """Generate a consensus election where moderate candidates are popular.
+    
+    Creates ballots where voters prefer moderate candidates as second choices
+    even if they have different first preferences.
+    
+    Args:
+        candidates: List of candidate names
+        num_voters: Number of ballots to generate
+        
+    Returns:
+        List of ballots as candidate preference lists
+    """
+    if len(candidates) < 2:
+        raise ValueError("Need at least 2 candidates for consensus election")
+    
+    if num_voters <= 0:
+        return []
+    
+    ballots = []
+    candidates_list = list(candidates)
+    
+    # Create consensus preference weights - moderate candidates preferred
+    weights = {}
+    for i, candidate in enumerate(candidates_list):
+        # Middle candidates get higher weights
+        if len(candidates_list) > 2 and 0 < i < len(candidates_list) - 1:
+            weights[candidate] = 0.5 / max(1, len(candidates_list) - 2)
+        else:
+            weights[candidate] = 0.25
+    
+    return generate_synthetic_ballots(candidates_list, num_voters, preference_weights=weights)
+
+
+def generate_close_race_election(candidates: Sequence[str], num_voters: int) -> list[list[str]]:
+    """Generate a close race with relatively even candidate support.
+    
+    Creates ballots where all candidates have similar first-choice support,
+    making the election outcome depend on lower preferences.
+    
+    Args:
+        candidates: List of candidate names
+        num_voters: Number of ballots to generate
+        
+    Returns:
+        List of ballots as candidate preference lists
+    """
+    if len(candidates) < 2:
+        raise ValueError("Need at least 2 candidates for close race")
+    
+    if num_voters <= 0:
+        return []
+    
+    # Equal weights for close race
+    weights = {candidate: 1.0 / len(candidates) for candidate in candidates}
+    
+    return generate_synthetic_ballots(list(candidates), num_voters, preference_weights=weights)
+
+
+def generate_landslide_election(candidates: Sequence[str], num_voters: int) -> list[list[str]]:
+    """Generate a landslide election with one dominant candidate.
+    
+    Creates ballots where one candidate has overwhelming first-choice support
+    but still demonstrates RCV mechanics.
+    
+    Args:
+        candidates: List of candidate names
+        num_voters: Number of ballots to generate
+        
+    Returns:
+        List of ballots as candidate preference lists
+    """
+    if len(candidates) < 2:
+        raise ValueError("Need at least 2 candidates for landslide election") 
+    
+    if num_voters <= 0:
+        return []
+    
+    candidates_list = list(candidates)
+    
+    # First candidate gets 60% preference, others split the rest
+    weights = {}
+    weights[candidates_list[0]] = 0.6
+    remaining_weight = 0.4 / max(1, len(candidates_list) - 1)
+    
+    for candidate in candidates_list[1:]:
+        weights[candidate] = remaining_weight
+    
+    return generate_synthetic_ballots(candidates_list, num_voters, preference_weights=weights)

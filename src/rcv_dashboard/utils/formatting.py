@@ -347,6 +347,112 @@ def truncate_text(text: str, max_length: int = 50, ellipsis: str = "...") -> str
     return text[:max_length - len(ellipsis)] + ellipsis
 
 
+def format_round_summary(round_number: int, round_result: Any, 
+                        is_final: bool = False, has_majority: bool = False) -> str:
+    """Create a formatted summary of an election round.
+    
+    Args:
+        round_number: Round number (1-based)
+        round_result: RoundResult object with vote counts and elimination info
+        is_final: Whether this is the final round
+        has_majority: Whether someone achieved majority in this round
+        
+    Returns:
+        Formatted HTML string summarizing the round
+        
+    Examples:
+        >>> from types import SimpleNamespace
+        >>> round_result = SimpleNamespace(
+        ...     vote_counts={"Alice": 150, "Bob": 100}, 
+        ...     eliminated_candidate="Bob",
+        ...     total_votes=250
+        ... )
+        >>> summary = format_round_summary(2, round_result, is_final=False, has_majority=False)
+        >>> "Round 2" in summary
+        True
+        >>> "Bob" in summary
+        True
+    """
+    vote_counts = getattr(round_result, 'vote_counts', {})
+    eliminated = getattr(round_result, 'eliminated_candidate', None)
+    total_votes = getattr(round_result, 'total_votes', 0)
+    
+    lines = [f"<div class='round-summary'><strong>Round {round_number}</strong>"]
+    
+    if vote_counts:
+        # Sort candidates by vote count
+        sorted_candidates = sorted(vote_counts.items(), key=lambda x: x[1], reverse=True)
+        
+        for candidate, votes in sorted_candidates:
+            percentage = (votes / total_votes * 100) if total_votes > 0 else 0
+            status = ""
+            if has_majority and candidate == sorted_candidates[0][0]:
+                status = " <span class='winner'>🏆 Winner</span>"
+            elif eliminated and candidate == eliminated:
+                status = " <span class='eliminated'>❌ Eliminated</span>"
+            
+            lines.append(f"• {candidate}: {votes:,} votes ({percentage:.1f}%){status}")
+    
+    if eliminated and not is_final:
+        lines.append(f"<em>{eliminated} eliminated (lowest votes)</em>")
+    elif is_final:
+        lines.append("<em>Election complete!</em>")
+    
+    lines.append("</div>")
+    return "<br>".join(lines)
+
+
+def format_number_with_commas(number: int) -> str:
+    """Format integer with comma separators for thousands.
+    
+    Args:
+        number: Integer to format
+        
+    Returns:
+        Formatted number string with commas
+        
+    Examples:
+        >>> format_number_with_commas(1000)
+        '1,000'
+        >>> format_number_with_commas(1234567)
+        '1,234,567'
+        >>> format_number_with_commas(123)
+        '123'
+    """
+    return f"{number:,}"
+
+
+def create_status_indicator(status: str, label: str = "") -> str:
+    """Create a colored status indicator for UI display.
+    
+    Args:
+        status: Status type ('active', 'eliminated', 'winner', etc.)
+        label: Optional label text to display
+        
+    Returns:
+        HTML string with colored status indicator
+        
+    Examples:
+        >>> indicator = create_status_indicator("winner", "Alice")
+        >>> "winner" in indicator.lower()
+        True
+        >>> "Alice" in indicator
+        True
+    """
+    status_colors = {
+        "active": "#28a745",      # Green
+        "eliminated": "#dc3545",  # Red  
+        "winner": "#ffc107",      # Gold
+        "pending": "#6c757d",     # Gray
+        "leading": "#007bff",     # Blue
+    }
+    
+    color = status_colors.get(status.lower(), "#6c757d")
+    display_text = label if label else status.title()
+    
+    return f'<span style="color: {color}; font-weight: bold;">● {display_text}</span>'
+
+
 def format_ordinal(number: int) -> str:
     """Format number with ordinal suffix (1st, 2nd, 3rd, etc.).
     

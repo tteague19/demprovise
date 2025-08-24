@@ -255,6 +255,12 @@ dev = [
     { name = "types-openpyxl" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "hypothesis" },
+    { name = "pytest-cov" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.138.2" },
@@ -272,6 +278,12 @@ requires-dist = [
     { name = "streamlit", specifier = ">=1.41.1" },
     { name = "types-openpyxl", marker = "extra == 'dev'", specifier = ">=3.1.0" },
     { name = "typing-extensions", specifier = ">=4.8.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "hypothesis", specifier = ">=6.138.2" },
+    { name = "pytest-cov", specifier = ">=6.2.1" },
 ]
 
 [[package]]
