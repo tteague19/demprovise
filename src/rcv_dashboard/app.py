@@ -430,23 +430,32 @@ def load_demo_scenario(scenario_name: str) -> None:
         with st.spinner(f"Loading {scenario_name} scenario..."):
             ballot_data, description, analysis = load_scenario(scenario_name)
         
-        # Store in session state
+        # Store ballot data and scenario context in session state
         st.session_state.ballot_data = ballot_data
-        st.session_state.election_result = None
         st.session_state.scenario_description = description
         st.session_state.scenario_analysis = analysis
         
-        st.success(f"🎭 Loaded demo scenario: **{scenario_name}**")
+        # Auto-process the RCV election for immediate results
+        with st.spinner("Processing RCV election..."):
+            processor = RCVProcessor(ballot_data)
+            election_result = processor.run_election()
+        
+        # Store election results in session state
+        st.session_state.election_result = election_result
+        
+        st.success(f"🎉 Demo scenario loaded and processed: **{scenario_name}**")
+        st.success(f"🏆 Winner: **{election_result.winner}** ({len(election_result.rounds)} rounds)")
         st.info(f"📊 {ballot_data.total_ballots} ballots with {len(ballot_data.candidates)} candidates")
+        st.balloons()
         
         # Provide additional context
-        with st.expander("🎓 About This Scenario", expanded=True):
+        with st.expander("🎓 About This Scenario", expanded=False):
             st.markdown(description)
             st.markdown("---")
             st.markdown(analysis)
     
     except Exception as e:
-        st.error(f"Error loading scenario: {str(e)}")
+        st.error(f"Error loading/processing scenario: {str(e)}")
         if st.checkbox("Show detailed error", key="scenario_error"):
             st.code(traceback.format_exc())
 
