@@ -1,0 +1,85 @@
+services:
+  # Production service
+  rcv-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ""  # Use the final production stage
+    ports:
+      - "8501:8501"
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+    volumes:
+      # Mount docs/examples for easy access to sample files
+      - ./docs/examples:/app/docs/examples:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - rcv-network
+
+  # Development service with hot reload
+  rcv-dashboard-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: "development"
+    ports:
+      - "8501:8501"
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=auto
+      - STREAMLIT_SERVER_RUN_ON_SAVE=true
+    volumes:
+      # Mount source code for development hot reload
+      - ./src:/app/src:rw
+      - ./tests:/app/tests:rw
+      - ./docs:/app/docs:rw
+      - ./run_app.py:/app/run_app.py:rw
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      # Preserve virtual environment and cache
+      - rcv-venv:/app/.venv
+      - rcv-cache:/app/.cache
+    restart: unless-stopped
+    profiles:
+      - development
+    networks:
+      - rcv-network
+
+  # Nginx reverse proxy for production deployment
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - rcv-dashboard
+    restart: unless-stopped
+    profiles:
+      - production
+    networks:
+      - rcv-network
+
+volumes:
+  rcv-venv:
+    driver: local
+  rcv-cache:
+    driver: local
+
+networks:
+  rcv-network:
+    driver: bridge

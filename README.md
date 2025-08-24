@@ -71,6 +71,29 @@ streamlit run run_app.py
 
 The dashboard will open in your web browser at `http://localhost:8501`.
 
+#### Using Docker (Recommended for Production)
+```bash
+# Clone the repository
+git clone https://github.com/example/demprovise.git
+cd demprovise
+
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Or run in detached mode
+docker-compose up -d --build
+```
+
+#### Development with Docker
+```bash
+# Run development environment with hot reload
+docker-compose --profile development up rcv-dashboard-dev --build
+
+# Or use the development-optimized Dockerfile directly
+docker build -f Dockerfile.dev -t rcv-dashboard:dev .
+docker run -p 8501:8501 -v $(pwd)/src:/app/src rcv-dashboard:dev
+```
+
 ### First Steps
 
 1. **Try a Demo**: Use the sidebar to load a pre-built scenario like "Classic Spoiler Effect"
@@ -148,6 +171,103 @@ Academic election with issue-based voting patterns around campus priorities.
 
 ### 7. City Council Race
 Municipal election showing geographic voting patterns and cross-district coalition building.
+
+## 🐳 Docker Deployment
+
+### Quick Start with Docker
+
+The fastest way to get the RCV Dashboard running is with Docker:
+
+```bash
+# Clone and run in one step
+git clone https://github.com/example/demprovise.git
+cd demprovise
+docker-compose up --build
+```
+
+### Docker Deployment Options
+
+#### 1. Production Deployment
+```bash
+# Production with Nginx reverse proxy
+docker-compose --profile production up -d --build
+
+# Simple production (Streamlit only)
+docker-compose up rcv-dashboard -d --build
+```
+
+#### 2. Development Environment
+```bash
+# Development with hot reload
+docker-compose --profile development up rcv-dashboard-dev --build
+
+# Development with code mounting for live changes
+docker-compose --profile development up -d --build
+```
+
+### Docker Features
+
+**🚀 Optimized Build Process:**
+- Multi-stage builds for minimal production images
+- uv-powered dependency installation (5x faster than pip)
+- Efficient Docker layer caching
+- Non-root user for security
+
+**🔧 Development Features:**
+- Hot reload with volume mounting
+- Development tools included
+- Streamlit file watcher enabled
+- Separate development Dockerfile
+
+**🏗️ Production Features:**
+- Nginx reverse proxy with SSL support
+- Health checks and restart policies
+- Rate limiting and security headers
+- Optimized for container orchestration
+
+### Container Management
+
+```bash
+# View logs
+docker-compose logs -f rcv-dashboard
+
+# Scale for high availability (production)
+docker-compose up --scale rcv-dashboard=3 -d
+
+# Update and rebuild
+docker-compose down
+docker-compose up --build -d
+
+# Clean up
+docker-compose down -v
+docker system prune -f
+```
+
+### Environment Variables
+
+Configure the application using environment variables:
+
+```bash
+# In .env file or docker-compose.yml
+STREAMLIT_SERVER_PORT=8501
+STREAMLIT_SERVER_ADDRESS=0.0.0.0
+STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+STREAMLIT_SERVER_HEADLESS=true
+```
+
+### Production Deployment
+
+For production deployment, use the included nginx configuration:
+
+1. **SSL Configuration**: Add certificates to `docker/ssl/`
+2. **Domain Setup**: Update `docker/nginx.conf` with your domain
+3. **Security**: Review and customize security headers
+4. **Scaling**: Use container orchestration (Docker Swarm, Kubernetes)
+
+```bash
+# Production with SSL (after configuring certificates)
+docker-compose --profile production up -d
+```
 
 ## 🛠️ Development
 
