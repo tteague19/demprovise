@@ -49,7 +49,7 @@ cd demprovise
 uv sync
 
 # Run the application
-uv run streamlit run src/rcv_dashboard/app.py
+uv run streamlit run run_app.py
 ```
 
 #### Using pip
@@ -66,7 +66,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Run the application
-streamlit run src/rcv_dashboard/app.py
+streamlit run run_app.py
 ```
 
 The dashboard will open in your web browser at `http://localhost:8501`.
