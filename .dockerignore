@@ -55,6 +55,9 @@ Thumbs.db
 htmlcov/
 .coverage.*
 
+# Large directories that slow down build
+htmlcov/
+
 # Documentation build
 docs/_build/
 .sphinx/

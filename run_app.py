@@ -19,5 +19,14 @@ src_path = project_root / "src"
 sys.path.insert(0, str(src_path))
 
 # Import and execute the main application
-# Note: Streamlit will handle calling main() when this file is run
-from rcv_dashboard.app import *
+try:
+    from rcv_dashboard.app import main
+    
+    # Execute the main function - this is what Streamlit will run
+    main()
+    
+except ImportError as e:
+    import streamlit as st
+    st.error(f"Failed to import RCV Dashboard modules: {e}")
+    st.error("Please ensure all dependencies are installed and the application is properly configured.")
+    st.stop()

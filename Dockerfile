@@ -58,8 +58,10 @@ COPY --chown=appuser:appgroup . .
 # Switch to non-root user
 USER appuser
 
-# Add virtual environment to path
+# Add virtual environment to path and Python path
 ENV PATH="/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="/app/.venv"
+ENV PYTHONPATH="/app/.venv/lib/python3.11/site-packages:$PYTHONPATH"
 
 # Expose Streamlit port
 EXPOSE 8501
@@ -68,5 +70,5 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Run the Streamlit application
-CMD ["streamlit", "run", "run_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Run the Streamlit application using Python module approach with PYTHONPATH
+CMD ["python3", "-m", "streamlit", "run", "run_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
