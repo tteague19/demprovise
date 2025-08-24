@@ -1,0 +1,46 @@
+# Sample RCV Ballot Data - Municipal Election
+# This is a sample CSV file showing the correct format for ballot data
+# Each row represents one voter's ranked preferences
+# Leave cells blank for candidates not ranked by that voter
+
+Choice 1,Choice 2,Choice 3,Choice 4
+Alice Johnson,Bob Martinez,Carol Zhang,David Kim
+Bob Martinez,Alice Johnson,Carol Zhang,
+Carol Zhang,Alice Johnson,Bob Martinez,David Kim
+Alice Johnson,Carol Zhang,,
+David Kim,Bob Martinez,Alice Johnson,Carol Zhang
+Bob Martinez,David Kim,Carol Zhang,Alice Johnson
+Alice Johnson,Bob Martinez,,
+Carol Zhang,Bob Martinez,Alice Johnson,
+Bob Martinez,Carol Zhang,Alice Johnson,David Kim
+Alice Johnson,,David Kim,
+David Kim,Carol Zhang,Alice Johnson,Bob Martinez
+Carol Zhang,Alice Johnson,,
+Alice Johnson,David Kim,Bob Martinez,Carol Zhang
+Bob Martinez,Alice Johnson,David Kim,Carol Zhang
+Carol Zhang,David Kim,Alice Johnson,
+Alice Johnson,Bob Martinez,Carol Zhang,
+David Kim,Alice Johnson,Carol Zhang,Bob Martinez
+Bob Martinez,Carol Zhang,,
+Carol Zhang,Alice Johnson,David Kim,Bob Martinez
+Alice Johnson,Carol Zhang,Bob Martinez,
+Bob Martinez,David Kim,,Alice Johnson
+Carol Zhang,Bob Martinez,Alice Johnson,David Kim
+Alice Johnson,David Kim,,
+David Kim,Bob Martinez,Carol Zhang,
+Alice Johnson,,Bob Martinez,
+Bob Martinez,Carol Zhang,David Kim,Alice Johnson
+Carol Zhang,Alice Johnson,Bob Martinez,
+Alice Johnson,Carol Zhang,David Kim,
+David Kim,Alice Johnson,,
+Bob Martinez,Alice Johnson,Carol Zhang,David Kim
+Carol Zhang,David Kim,Bob Martinez,Alice Johnson
+Alice Johnson,Bob Martinez,David Kim,
+David Kim,Carol Zhang,,
+Bob Martinez,,Alice Johnson,
+Alice Johnson,Carol Zhang,,David Kim
+Carol Zhang,Bob Martinez,David Kim,
+Bob Martinez,David Kim,Alice Johnson,
+Alice Johnson,,Carol Zhang,
+David Kim,Bob Martinez,,
+Carol Zhang,Alice Johnson,Bob Martinez,David Kim
