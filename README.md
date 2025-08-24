@@ -71,6 +71,25 @@ streamlit run run_app.py
 
 The dashboard will open in your web browser at `http://localhost:8501`.
 
+#### Using Streamlit Cloud (Recommended for Sharing)
+Deploy directly to Streamlit Cloud for easy sharing and collaboration:
+
+```bash
+# 1. Fork this repository to your GitHub account
+# 2. Go to https://share.streamlit.io/
+# 3. Click "New app" and connect to your GitHub repository
+# 4. Set main file path to: streamlit_app.py
+# 5. Click "Deploy"
+```
+
+**Requirements for Streamlit Cloud:**
+- ✅ GitHub repository (public or private)
+- ✅ `requirements.txt` file (already included)
+- ✅ `streamlit_app.py` entry point (already included)
+- ✅ Python 3.11+ compatibility (configured)
+
+Your app will be available at `https://your-app-name.streamlit.app` within minutes!
+
 #### Using Docker (Recommended for Production)
 ```bash
 # Clone the repository
@@ -100,6 +119,15 @@ docker run -p 8501:8501 -v $(pwd)/src:/app/src rcv-dashboard:dev
 2. **Upload Your Data**: Click "Choose a ballot file" to upload your own CSV or Excel file
 3. **Explore Results**: View interactive charts, detailed tables, and round-by-round analysis
 4. **Export Data**: Download complete results, charts, or ballot templates
+
+### 🚪 Entry Points
+
+The RCV Dashboard provides multiple entry points for different use cases:
+
+- **`streamlit_app.py`** - Optimized for Streamlit Cloud deployment and production use
+- **`run_app.py`** - Designed for local development and Docker containers  
+
+Both entry points provide identical functionality, but `streamlit_app.py` uses the installed package approach for better cloud compatibility, while `run_app.py` handles development setups where the package isn't formally installed.
 
 ## 📊 Using the Dashboard
 

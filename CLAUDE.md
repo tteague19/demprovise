@@ -89,14 +89,28 @@ Initial project setup with uv configuration. Ready to begin implementation start
 
 ### Development
 - **Install dependencies**: `uv sync`
-- **Run application locally**: `uv run streamlit run src/rcv_dashboard/app.py`
+- **Run application locally**: `uv run streamlit run run_app.py` or `uv run streamlit run streamlit_app.py`
 - **Run tests**: `uv run pytest --cov=src --cov-report=html --cov-fail-under=100`
 - **Format code**: `uv run ruff format src/ tests/`
 - **Lint code**: `uv run ruff check src/ tests/`
 - **Type check**: `uv run mypy src/`
 
 ### Deployment
-- **Streamlit Cloud**: Deploy via GitHub integration at https://share.streamlit.io
-- **Requirements**: Ensure `requirements.txt` is generated with `uv export --format=requirements-txt`
-- **Configuration**: Use `.streamlit/config.toml` for deployment settings
-- **Secrets**: Configure secrets in Streamlit Cloud dashboard for any API keys or sensitive data
+
+#### Streamlit Cloud (Recommended for Sharing)
+- **Platform**: Deploy via GitHub integration at https://share.streamlit.io
+- **Entry Point**: Use `streamlit_app.py` (optimized for cloud deployment)
+- **Requirements**: `requirements.txt` is pre-generated with `uv export --format=requirements-txt`
+- **Configuration**: `.streamlit/config.toml` included with optimized settings
+- **Process**: Fork repo → Connect to Streamlit Cloud → Set main file to `streamlit_app.py` → Deploy
+
+#### Docker Deployment (Production)
+- **Local Development**: `uv run streamlit run run_app.py` or `docker-compose --profile development up`
+- **Production**: `docker-compose up --build` or `docker-compose --profile production up`
+- **Entry Point**: Uses `run_app.py` with proper PYTHONPATH configuration
+- **Features**: Multi-stage builds with uv optimization, Nginx reverse proxy, SSL support
+
+#### Entry Points
+- **`streamlit_app.py`**: Streamlit Cloud optimized (uses installed package imports)
+- **`run_app.py`**: Development/Docker optimized (handles sys.path configuration)
+- **Both provide identical functionality** with different import strategies for deployment compatibility

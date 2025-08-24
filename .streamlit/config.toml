@@ -1,0 +1,40 @@
+# Streamlit configuration for RCV Dashboard
+# This file optimizes the application for all deployment environments
+
+[server]
+# Server configuration optimized for production
+headless = true
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 50
+port = 8501
+
+[browser]
+# Browser behavior configuration
+gatherUsageStats = false
+
+[client]
+# Client-side configuration
+showErrorDetails = false
+
+[theme]
+# Professional theme for RCV Dashboard
+primaryColor = "#1f77b4"  # Professional blue for primary actions
+backgroundColor = "#ffffff"  # Clean white background
+secondaryBackgroundColor = "#f0f2f6"  # Light gray for secondary areas
+textColor = "#262730"  # Dark gray for text
+
+[runner]
+# Performance optimizations
+magicEnabled = true
+postScriptGC = true
+
+
+# File watcher settings for development
+[global]
+developmentMode = false
+
+# Logging configuration
+[logger]
+level = "info"
+messageFormat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
