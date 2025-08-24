@@ -159,26 +159,31 @@ def create_vote_progression_chart(election_result: ElectionResult) -> go.Figure:
 
 
 def create_vote_transfer_sankey(election_result: ElectionResult) -> go.Figure:
-    """Create a Sankey diagram showing vote transfers between candidates.
+    """Create a comprehensive Sankey diagram showing complete RCV vote flow.
     
-    This visualization shows how votes flow from eliminated candidates to
-    remaining candidates, illustrating the vote transfer process in RCV.
+    This visualization shows how votes flow through each round of RCV,
+    including both vote transfers from eliminated candidates and continuing
+    votes for surviving candidates, based on actual ballot preferences.
     
     Args:
         election_result: Complete election results with transfer information
         
     Returns:
-        Interactive Plotly Sankey diagram
+        Interactive Plotly Sankey diagram showing round-by-round vote flow
         
     Example:
         >>> fig = create_vote_transfer_sankey(election_result)
         >>> fig.show()
     """
     if len(election_result.rounds) <= 1:
-        # No transfers to show - create informational figure
+        # Single round election - show simple result
         fig = go.Figure()
+        final_round = election_result.rounds[0]
+        
         fig.add_annotation(
-            text="🏆 Election decided in first round!<br><br>No vote transfers occurred<br>Winner achieved majority immediately",
+            text=f"🏆 {election_result.winner} won with majority in Round 1!<br><br>" +
+                 f"Final votes: {final_round.vote_counts.get(election_result.winner, 0):,}<br>" +
+                 f"No vote transfers needed",
             xref="paper", yref="paper",
             x=0.5, y=0.5, showarrow=False,
             font=dict(size=18, color="darkgreen"),
@@ -188,116 +193,152 @@ def create_vote_transfer_sankey(election_result: ElectionResult) -> go.Figure:
             borderpad=20
         )
         fig.update_layout(
-            title={
-                "text": "Vote Transfer Flow - No Transfers Needed",
-                "x": 0.5,
-                "font": {"size": 20}
-            },
+            title="RCV Vote Flow - First Round Victory",
             height=400,
             showlegend=False
         )
         return fig
     
-    # Simplified approach: Create nodes and links for vote transfers only
+    # Build comprehensive round-by-round flow
     nodes = []
     node_colors = []
     links = []
+    node_map = {}
+    node_index = 0
     
     # Get consistent colors for candidates
     all_candidates = [c.name for c in election_result.candidates]
-    color_map = {
-        candidate: _get_candidate_color_hex(candidate, len(all_candidates))
-        for candidate in all_candidates
-    }
+    candidate_colors = {}
+    base_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
     
-    # Track node indices
-    node_index = 0
-    node_map = {}
+    for i, candidate in enumerate(all_candidates):
+        candidate_colors[candidate] = base_colors[i % len(base_colors)]
     
-    # Create simplified structure: show major vote flows
-    for round_num in range(len(election_result.rounds)):
-        round_result = election_result.rounds[round_num]
+    # Create nodes for each candidate in each round they participate
+    for round_idx, round_result in enumerate(election_result.rounds):
+        round_num = round_result.round_number
         
-        if round_num == 0:
-            # First round - create source nodes
-            for candidate_name, vote_count in round_result.vote_counts.items():
-                if vote_count > 0:
-                    node_name = f"{candidate_name}\n({vote_count:,} votes)"
-                    nodes.append(node_name)
-                    node_colors.append(color_map[candidate_name])
-                    node_map[f"{candidate_name}_start"] = node_index
-                    node_index += 1
-        
-        else:
-            # Later rounds - handle transfers
-            prev_round = election_result.rounds[round_num - 1]
-            eliminated = prev_round.eliminated_candidate
-            
-            if eliminated and round_result.vote_transfers:
-                # Create elimination node
-                eliminated_votes = prev_round.vote_counts.get(eliminated, 0)
-                elim_node_name = f"{eliminated}\nEliminated\n({eliminated_votes:,} votes)"
-                nodes.append(elim_node_name)
-                node_colors.append("rgba(255, 99, 99, 0.8)")  # Red for eliminated
-                elim_index = node_index
-                node_map[f"{eliminated}_eliminated"] = elim_index
-                node_index += 1
+        # Add nodes for active candidates this round
+        for candidate_name, vote_count in round_result.vote_counts.items():
+            if vote_count > 0:
+                node_key = f"{candidate_name}_R{round_num}"
+                node_label = f"{candidate_name}\nRound {round_num}\n({vote_count:,} votes)"
                 
-                # Create transfer links
-                for transfer in round_result.vote_transfers:
-                    target_name = transfer.to_candidate
-                    transfer_votes = transfer.vote_count
+                nodes.append(node_label)
+                node_colors.append(candidate_colors[candidate_name])
+                node_map[node_key] = node_index
+                node_index += 1
+        
+        # Add exhausted ballots node if there are any
+        if round_result.exhausted_ballots > 0:
+            exhausted_key = f"Exhausted_R{round_num}"
+            exhausted_label = f"Exhausted Ballots\nRound {round_num}\n({round_result.exhausted_ballots:,})"
+            
+            nodes.append(exhausted_label)
+            node_colors.append("rgba(128, 128, 128, 0.6)")  # Gray for exhausted
+            node_map[exhausted_key] = node_index
+            node_index += 1
+    
+    # Create links between rounds
+    for round_idx in range(len(election_result.rounds) - 1):
+        current_round = election_result.rounds[round_idx]
+        next_round = election_result.rounds[round_idx + 1]
+        eliminated = current_round.eliminated_candidate
+        
+        # Handle continuing votes (candidates who survive to next round)
+        for candidate_name in current_round.vote_counts:
+            if candidate_name != eliminated and candidate_name in next_round.vote_counts:
+                current_key = f"{candidate_name}_R{current_round.round_number}"
+                next_key = f"{candidate_name}_R{next_round.round_number}"
+                
+                if current_key in node_map and next_key in node_map:
+                    # Calculate continuing votes (votes that stayed with this candidate)
+                    current_votes = current_round.vote_counts[candidate_name]
                     
-                    if transfer_votes > 0:
-                        # Create or get target node
-                        target_key = f"{target_name}_receives"
-                        if target_key not in node_map:
-                            target_node_name = f"{target_name}\nReceives Transfers\n(+{transfer_votes:,} votes)"
-                            nodes.append(target_node_name)
-                            node_colors.append(color_map[target_name])
-                            node_map[target_key] = node_index
-                            node_index += 1
+                    # For continuing candidates, their base votes carry forward
+                    # The increase comes from transfers which we'll handle separately
+                    continuing_votes = current_votes
+                    
+                    if continuing_votes > 0:
+                        # Convert hex to rgba for transparency
+                        hex_color = candidate_colors[candidate_name].lstrip('#')
+                        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                        rgba_color = f"rgba({r}, {g}, {b}, 0.6)"
                         
-                        # Create link
                         links.append({
-                            "source": elim_index,
+                            "source": node_map[current_key],
+                            "target": node_map[next_key],
+                            "value": continuing_votes,
+                            "color": rgba_color
+                        })
+        
+        # Handle vote transfers from eliminated candidate
+        if eliminated and next_round.vote_transfers:
+            eliminated_key = f"{eliminated}_R{current_round.round_number}"
+            
+            if eliminated_key in node_map:
+                for transfer in next_round.vote_transfers:
+                    target_candidate = transfer.to_candidate
+                    transfer_votes = transfer.vote_count
+                    target_key = f"{target_candidate}_R{next_round.round_number}"
+                    
+                    if target_key in node_map and transfer_votes > 0:
+                        links.append({
+                            "source": node_map[eliminated_key],
                             "target": node_map[target_key],
                             "value": transfer_votes,
-                            "color": "rgba(100, 149, 237, 0.4)"  # Semi-transparent blue
+                            "color": "rgba(255, 100, 100, 0.7)"  # Red-orange for transfers
                         })
-    
-    # If no meaningful transfers found, create a simplified view
-    if not links and len(election_result.rounds) > 1:
-        # Fallback: show final results
-        final_round = election_result.rounds[-1]
-        nodes = ["Election Start", f"Winner: {election_result.winner}"]
-        node_colors = ["lightblue", "gold"]
-        winner_votes = final_round.vote_counts.get(election_result.winner, 0)
         
-        links = [{
-            "source": 0,
-            "target": 1, 
-            "value": winner_votes,
-            "color": "rgba(255, 215, 0, 0.6)"
-        }]
+        # Handle exhausted ballots flow
+        current_exhausted = current_round.exhausted_ballots
+        next_exhausted = next_round.exhausted_ballots
+        
+        if current_exhausted > 0 and next_exhausted > current_exhausted:
+            # New exhausted ballots (from eliminated candidate with no next preference)
+            eliminated_key = f"{eliminated}_R{current_round.round_number}"
+            next_exhausted_key = f"Exhausted_R{next_round.round_number}"
+            
+            if eliminated_key in node_map and next_exhausted_key in node_map:
+                newly_exhausted = next_exhausted - current_exhausted
+                if newly_exhausted > 0:
+                    links.append({
+                        "source": node_map[eliminated_key],
+                        "target": node_map[next_exhausted_key],
+                        "value": newly_exhausted,
+                        "color": "rgba(128, 128, 128, 0.5)"  # Gray for exhausted
+                    })
+        
+        # Carry forward existing exhausted ballots
+        if current_exhausted > 0:
+            current_exhausted_key = f"Exhausted_R{current_round.round_number}"
+            next_exhausted_key = f"Exhausted_R{next_round.round_number}"
+            
+            if current_exhausted_key in node_map and next_exhausted_key in node_map:
+                links.append({
+                    "source": node_map[current_exhausted_key],
+                    "target": node_map[next_exhausted_key],
+                    "value": current_exhausted,
+                    "color": "rgba(128, 128, 128, 0.3)"
+                })
     
     # Create the Sankey diagram
     fig = go.Figure(data=[go.Sankey(
         arrangement="snap",
         node=dict(
-            pad=20,
-            thickness=25,
-            line=dict(color="black", width=1),
+            pad=15,
+            thickness=20,
+            line=dict(color="black", width=0.5),
             label=nodes,
             color=node_colors,
             hovertemplate="<b>%{label}</b><extra></extra>"
         ),
         link=dict(
             source=[link["source"] for link in links],
-            target=[link["target"] for link in links], 
+            target=[link["target"] for link in links],
             value=[link["value"] for link in links],
-            color=[link.get("color", "rgba(100, 149, 237, 0.4)") for link in links],
-            hovertemplate="<b>%{value:,} votes</b> transferred<br>" +
+            color=[link["color"] for link in links],
+            hovertemplate="<b>%{value:,} votes</b><br>" +
                          "From: %{source.label}<br>" +
                          "To: %{target.label}<extra></extra>"
         )
@@ -306,24 +347,26 @@ def create_vote_transfer_sankey(election_result: ElectionResult) -> go.Figure:
     # Enhanced layout
     fig.update_layout(
         title={
-            "text": f"RCV Vote Transfer Flow - {len(election_result.rounds)} Rounds",
+            "text": f"Complete RCV Vote Flow - {len(election_result.rounds)} Rounds",
             "x": 0.5,
-            "font": {"size": 20, "color": "darkblue"}
+            "font": {"size": 18, "color": "darkblue"}
         },
-        font=dict(size=12, family="Arial, sans-serif"),
-        height=max(400, len(nodes) * 60),  # Dynamic height based on nodes
-        margin=dict(l=10, r=10, t=80, b=40),
-        plot_bgcolor="rgba(240, 248, 255, 0.3)",
+        font=dict(size=11, family="Arial, sans-serif"),
+        height=max(500, len(nodes) * 25 + 200),  # Dynamic height
+        margin=dict(l=20, r=20, t=80, b=60),
+        plot_bgcolor="rgba(248, 249, 250, 0.8)",
         annotations=[
             dict(
-                text="💡 Flow width represents vote quantities",
+                text="📊 Flow shows: Blue = Continuing votes, Red = Transfers, Gray = Exhausted",
                 xref="paper", yref="paper",
-                x=0.02, y=0.98,
+                x=0.5, y=0.02,
+                xanchor="center",
                 showarrow=False,
-                font=dict(size=11, color="gray"),
-                bgcolor="rgba(255, 255, 255, 0.8)",
-                bordercolor="gray",
-                borderwidth=1
+                font=dict(size=12, color="darkslategray"),
+                bgcolor="rgba(255, 255, 255, 0.9)",
+                bordercolor="lightgray",
+                borderwidth=1,
+                borderpad=8
             )
         ]
     )
