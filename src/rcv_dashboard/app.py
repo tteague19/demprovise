@@ -30,6 +30,12 @@ from .visualization.tables import (
     create_round_comparison_table,
 )
 from .simulation.scenarios import get_scenario_list, load_scenario
+from .utils.file_utils import (
+    create_ballot_template_csv,
+    create_ballot_template_excel,
+    export_results_to_csv,
+    create_comprehensive_export_zip,
+)
 
 
 def main() -> None:
@@ -71,6 +77,34 @@ def main() -> None:
         
         if uploaded_file:
             process_uploaded_file(uploaded_file, settings)
+        
+        # Template download section
+        st.subheader("📥 Download Templates")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📄 CSV Template", use_container_width=True):
+                candidates = ["Candidate A", "Candidate B", "Candidate C", "Candidate D"]
+                csv_data = create_ballot_template_csv(candidates, 10)
+                st.download_button(
+                    "⬇️ Download CSV",
+                    csv_data,
+                    "ballot_template.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        
+        with col2:
+            if st.button("📊 Excel Template", use_container_width=True):
+                candidates = ["Candidate A", "Candidate B", "Candidate C", "Candidate D"]
+                excel_data = create_ballot_template_excel(candidates, 10)
+                st.download_button(
+                    "⬇️ Download Excel",
+                    excel_data,
+                    "ballot_template.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
         
         st.divider()
         
@@ -319,6 +353,64 @@ def display_election_results(election_result: ElectionResult) -> None:
     
     with tab_rounds:
         display_round_by_round_results(election_result)
+    
+    # Export options
+    st.divider()
+    st.subheader("📤 Export Results")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # CSV Export
+        csv_data = export_results_to_csv(election_result)
+        st.download_button(
+            "📄 Download CSV Results",
+            csv_data,
+            f"rcv_results_{election_result.winner.replace(' ', '_').lower()}.csv",
+            "text/csv",
+            use_container_width=True
+        )
+    
+    with col2:
+        # Try to create comprehensive export with charts
+        try:
+            # Gather all charts from the visualization section
+            charts = [
+                create_vote_progression_chart(election_result),
+                create_vote_transfer_sankey(election_result),
+                create_elimination_timeline(election_result)
+            ]
+            
+            zip_data = create_comprehensive_export_zip(election_result, charts)
+            st.download_button(
+                "📦 Download Complete Package",
+                zip_data,
+                f"rcv_complete_{election_result.winner.replace(' ', '_').lower()}.zip",
+                "application/zip",
+                use_container_width=True
+            )
+        except Exception:
+            # Fallback to CSV only if chart export fails
+            st.download_button(
+                "📦 Download Complete Package",
+                csv_data,
+                f"rcv_complete_{election_result.winner.replace(' ', '_').lower()}.csv",
+                "text/csv",
+                use_container_width=True
+            )
+    
+    with col3:
+        # Ballot template with actual candidates
+        candidates = [c.name for c in election_result.candidates]
+        template_data = create_ballot_template_excel(candidates, 20)
+        st.download_button(
+            "📊 Download Ballot Template",
+            template_data,
+            "new_ballot_template.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            help="Excel template with the same candidates for creating new elections",
+            use_container_width=True
+        )
     
     # Option to process another election
     st.divider()
